@@ -185,22 +185,19 @@ const renderStar = (star) => {
 }
 
 const renderCircle = (circle) => {
-  const x1 = circle.position.x - circle.dimensions.width / 2
-  const y1 = circle.position.y
-  const x2 = circle.position.x
-  const y2 = circle.position.y + circle.dimensions.height / 2
-  const x3 = circle.position.x + circle.dimensions.width / 2
-  const y3 = circle.position.y
-  const x4 = circle.position.x
-  const y4 = circle.position.y - circle.dimensions.height / 2
+  const floatArray = [circle.position.x, circle.position.y]
 
-  const float32Array = new Float32Array([
-    x1, y1, x2, y2, x3, y3, x4, y4
-  ])
+  for(let i = 0; i <= 360; i++) {
+    let x = circle.position.x + circle.dimensions.width * Math.cos(i * Math.PI / 180)
+    let y = circle.position.y + circle.dimensions.height * Math.sin(i * Math.PI / 180)
+    floatArray.push(x, y)
+  }
+
+  var float32Array = new Float32Array(floatArray)
 
   gl.bufferData(gl.ARRAY_BUFFER, float32Array, gl.STATIC_DRAW);
 
-  gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+  gl.drawArrays(gl.TRIANGLE_FAN, 0, 362);
 }
 
 const addRectangle = (center) => {
