@@ -7,39 +7,51 @@ const GREEN_RGB = webglUtils.hexToRgb(GREEN_HEX)
 
 const RECTANGLE = "RECTANGLE"
 const TRIANGLE = "TRIANGLE"
+const LETTER_F = "LETTER_F"
 const CIRCLE = "CIRCLE"
 const STAR = "STAR"
 const CUBE = "CUBE"
 const origin = {x: 0, y: 0, z: 0}
 const sizeOne = {width: 1, height: 1, depth: 1}
+
+let camera = {
+  translation: {x: 5, y: 10, z: 45},
+  rotation: {x: 0, y: 0, z: 0}
+}
+
+let lightSource = [0.4, 0.3, 0.5]
+const up = [0, 1, 0]
+let target = [5, 10, 0]
+let lookAt = true
+
 let shapes = [
   {
-    type: RECTANGLE,
+    type: CUBE,
     position: origin,
     dimensions: sizeOne,
     color: BLUE_RGB,
-    translation: {x: -15, y: 0, z: -20},
-    rotation: {x: 0, y: 0, z: 0},
-    scale: {x: 10, y: 10, z: 10}
-  },
-  {
-    type: TRIANGLE,
-    position: origin,
-    dimensions: sizeOne,
-    color: RED_RGB,
-    translation: {x: 15, y: 0, z: -20},
-    rotation: {x: 0, y: 0, z: 0},
-    scale: {x: 10, y: 10, z: 10}
+    translation: {x:  0, y: 0, z: 0},
+    scale:       {x:   0.5, y:   0.5, z:   0.5},
+    rotation:    {x:   0, y:  0, z:   0},
   },
   {
     type: CUBE,
     position: origin,
     dimensions: sizeOne,
     color: GREEN_RGB,
-    translation: {x: -15, y: -15, z: -75},
-    rotation:    {x:   0, y:  45, z:   0},
-    scale:       {x:  10, y:  10, z:  10},
-  }
+    translation: {x: 20, y: 0, z: 0},
+    scale:       {x:   0.5, y:   0.5, z:   0.5},
+    rotation:    {x:   0, y:  0, z:   0},
+  },
+  {
+    type: CUBE,
+    position: origin,
+    dimensions: sizeOne,
+    color: RED_RGB,
+    translation:  {x: -20, y: 0, z: 0},
+    scale:       {x:   0.5, y:   0.5, z:   0.5},
+    rotation:     {x: 0, y: 0, z: 0}
+  },
 ]
 
 let gl
@@ -51,7 +63,7 @@ let bufferCoords
 const init = () => {
   // get a reference to the canvas and WebGL context
   const canvas = document.querySelector("#canvas");
-  canvas.addEventListener("mousedown", doMouseDown, false);
+  canvas.addEventListener("mousedown", webglUtils.doMouseDown, false);
   gl = canvas.getContext("webgl");
 
   // create and use a GLSL program
@@ -75,24 +87,43 @@ const init = () => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // event handlers that read input field data
-  document.getElementById("tx").onchange = event => updateTranslation(event, "x")
-  document.getElementById("ty").onchange = event => updateTranslation(event, "y")
-  document.getElementById("tz").onchange = event => updateTranslation(event, "z")
+  document.getElementById("tx").onchange = event => webglUtils.updateTranslation(event, "x")
+  document.getElementById("ty").onchange = event => webglUtils.updateTranslation(event, "y")
+  document.getElementById("tz").onchange = event => webglUtils.updateTranslation(event, "z")
 
-  document.getElementById("sx").onchange = event => updateScale(event, "x")
-  document.getElementById("sy").onchange = event => updateScale(event, "y")
-  document.getElementById("sz").onchange = event => updateScale(event, "z")
+  document.getElementById("sx").onchange = event => webglUtils.updateScale(event, "x")
+  document.getElementById("sy").onchange = event => webglUtils.updateScale(event, "y")
+  document.getElementById("sz").onchange = event => webglUtils.updateScale(event, "z")
 
-  document.getElementById("rx").onchange = event => updateRotation(event, "x")
-  document.getElementById("ry").onchange = event => updateRotation(event, "y")
-  document.getElementById("rz").onchange = event => updateRotation(event, "z")
+  document.getElementById("rx").onchange = event => webglUtils.updateRotation(event, "x")
+  document.getElementById("ry").onchange = event => webglUtils.updateRotation(event, "y")
+  document.getElementById("rz").onchange = event => webglUtils.updateRotation(event, "z")
 
-  document.getElementById("fv").onchange = event => updateFieldOfView(event)
+  document.getElementById("fv").onchange = event => webglUtils.updateFieldOfView(event)
 
-  document.getElementById("color").onchange = event => updateColor(event)
+  document.getElementById("color").onchange = event => webglUtils.updateColor(event)
+
+  document.getElementById("lookAt").onchange = event => webglUtils.toggleLookAt(event)
+  document.getElementById("ctx").onchange = event => webglUtils.updateCameraTranslation(event, "x")
+  document.getElementById("cty").onchange = event => webglUtils.updateCameraTranslation(event, "y")
+  document.getElementById("ctz").onchange = event => webglUtils.updateCameraTranslation(event, "z")
+  document.getElementById("crx").onchange = event => webglUtils.updateCameraRotation(event, "x")
+  document.getElementById("cry").onchange = event => webglUtils.updateCameraRotation(event, "y")
+  document.getElementById("crz").onchange = event => webglUtils.updateCameraRotation(event, "z")
+  document.getElementById("ltx").onchange = event => webglUtils.updateLookAtTranslation(event, 0)
+  document.getElementById("lty").onchange = event => webglUtils.updateLookAtTranslation(event, 1)
+  document.getElementById("ltz").onchange = event => webglUtils.updateLookAtTranslation(event, 2)
+
+  document.getElementById("lookAt").checked = lookAt
+  document.getElementById("ctx").value = camera.translation.x
+  document.getElementById("cty").value = camera.translation.y
+  document.getElementById("ctz").value = camera.translation.z
+  document.getElementById("crx").value = camera.rotation.x
+  document.getElementById("cry").value = camera.rotation.y
+  document.getElementById("crz").value = camera.rotation.z
 
   // set default shape
-  selectShape(0)
+  webglUtils.selectShape(0)
 }
 
 const render = () => {
@@ -108,6 +139,30 @@ const render = () => {
 
   gl.bindBuffer(gl.ARRAY_BUFFER, bufferCoords);
 
+  let cameraMatrix = m4.identity()
+  if(lookAt) {
+    cameraMatrix = m4.translate(
+      cameraMatrix,
+      camera.translation.x,
+      camera.translation.y,
+      camera.translation.z)
+    const cameraPosition = [cameraMatrix[12], cameraMatrix[13], cameraMatrix[14]]
+    cameraMatrix = m4.lookAt(cameraPosition, target, up)
+  } else {
+    cameraMatrix = m4.translate(
+      cameraMatrix,
+      camera.translation.x,
+      camera.translation.y,
+      camera.translation.z);
+    cameraMatrix = m4.zRotate(cameraMatrix, m4.degToRad(camera.rotation.z));
+    cameraMatrix = m4.xRotate(cameraMatrix, m4.degToRad(camera.rotation.x));
+    cameraMatrix = m4.yRotate(cameraMatrix, m4.degToRad(camera.rotation.y));
+  }
+  cameraMatrix = m4.inverse(cameraMatrix)
+
+  const projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar)
+  var viewProjectionMatrix = m4.multiply(projectionMatrix, cameraMatrix)
+
   shapes.forEach(shape => {
     gl.uniform4f(uniformColor,
       shape.color.red,
@@ -121,7 +176,7 @@ const render = () => {
     matrix = m4.scale(matrix, shape.scale.x, shape.scale.y);
 
     // apply transformation matrix.
-    let M = computeModelViewMatrix(gl.canvas, shape, aspect, zNear, zFar)
+    let M = computeModelViewMatrix(shape, viewProjectionMatrix)
     gl.uniformMatrix4fv(uniformMatrix, false, M);
 
     if(shape.type === RECTANGLE) {
@@ -142,13 +197,13 @@ const render = () => {
   shapes.forEach((shape, index) => {
     const $li = $(`
       <li>
-        <button onclick="deleteShape(${index})">
+        <button onclick="webglUtils.deleteShape(${index})">
           Delete
         </button>
         <label>
           <input type="radio" id="${shape.type}-${index}" name="shape-index"
             ${index === selectedShapeIndex ? "checked": ""}
-            onclick="selectShape(${index})" value="${index}"/>
+            onclick="webglUtils.selectShape(${index})" value="${index}"/>
           ${shape.type}; X: ${shape.translation.x}; Y: ${shape.translation.y}; Z: ${shape.translation.z};
         </label>
       </li>
@@ -230,18 +285,18 @@ const renderCircle = (circle) => {
 
 const renderCube = (cube) => {
   const geometry = [
-    0, 0, 0,   0, 3, 0,   3, 0, 0,
-    0, 3, 0,   3, 3, 0,   3, 0, 0,
-    0, 0, 3,   3, 0, 3,   0, 3, 3,
-    0, 3, 3,   3, 0, 3,   3, 3, 3,
-    0, 3, 0,   0, 3, 3,   3, 3, 3,
-    0, 3, 0,   3, 3, 3,   3, 3, 0,
-    0, 0, 0,   3, 0, 0,   3, 0, 3,
-    0, 0, 0,   3, 0, 3,   0, 0, 3,
-    0, 0, 0,   0, 0, 3,   0, 3, 3,
-    0, 0, 0,   0, 3, 3,   0, 3, 0,
-    3, 0, 3,   3, 0, 0,   3, 3, 3,
-    3, 3, 3,   3, 0, 0,   3, 3, 0
+     0,  0,  0,    0, 30,  0,   30,  0,  0,
+     0, 30,  0,   30, 30,  0,   30,  0,  0,
+     0,  0, 30,   30,  0, 30,    0, 30, 30,
+     0, 30, 30,   30,  0, 30,   30, 30, 30,
+     0, 30,  0,    0, 30, 30,   30, 30, 30,
+     0, 30,  0,   30, 30, 30,   30, 30,  0,
+     0,  0,  0,   30,  0,  0,   30,  0, 30,
+     0,  0,  0,   30,  0, 30,    0,  0, 30,
+     0,  0,  0,    0,  0, 30,    0, 30, 30,
+     0,  0,  0,    0, 30, 30,    0, 30,  0,
+    30,  0, 30,   30,  0,  0,   30, 30, 30,
+    30, 30, 30,   30,  0,  0,   30, 30,  0
   ]
   const float32Array = new Float32Array(geometry)
   gl.bufferData(gl.ARRAY_BUFFER, float32Array, gl.STATIC_DRAW)
@@ -250,9 +305,8 @@ const renderCube = (cube) => {
 }
 
 let fieldOfViewRadians = m4.degToRad(70)
-const computeModelViewMatrix = (canvas, shape, aspect, zNear, zFar) => {
-  let M = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar)
-  M = m4.translate(M, shape.translation.x, shape.translation.y, shape.translation.z)
+const computeModelViewMatrix = (shape, viewProjectionMatrix) => {
+  let M = m4.translate(viewProjectionMatrix, shape.translation.x, shape.translation.y, shape.translation.z)
   M = m4.xRotate(M, m4.degToRad(shape.rotation.x))
   M = m4.yRotate(M, m4.degToRad(shape.rotation.y))
   M = m4.zRotate(M, m4.degToRad(shape.rotation.z))
@@ -310,84 +364,4 @@ const addTriangle = (center) => {
   render()
 }
 
-const addShape = (newShape, type) => {
-  const colorHex = document.getElementById("color").value
-  const colorRgb = webglUtils.hexToRgb(colorHex)
-  let shape = {
-    type: type,
-    position: origin,
-    dimensions: sizeOne,
-    color: colorRgb,
-    translation: {x: 0, y: 0, z: 0},
-    rotation: {x: 0, y: 0, z: 0},
-    scale: {x: 20, y: 20, z: 20}
-  }
-  if (newShape) {
-    Object.assign(shape, newShape)
-  }
-  shapes.push(shape)
-  render()
-}
-
-const doMouseDown = (event) => {
-  const boundingRectangle = canvas.getBoundingClientRect();
-  const x = Math.round(event.clientX - boundingRectangle.left - boundingRectangle.width/2);
-  const y = -Math.round(event.clientY - boundingRectangle.top - boundingRectangle.height/2);
-  const z = boundingRectangle.height / 2 / Math.tan(fieldOfViewRadians / 2)
-  const translation = {x, y, z: -z}
-  const rotation = {x: 0, y: 0, z: 180}
-  const shapeType = document.querySelector("input[name='shape']:checked").value
-  const shape = {translation, rotation}
-
-  addShape(shape, shapeType)
-}
-
 let selectedShapeIndex = 0
-
-const updateTranslation = (event, axis) => {
-  const value = event.target.value
-  shapes[selectedShapeIndex].translation[axis] = value
-  render()
-}
-
-const updateScale = (event, axis) => {
-  const value = event.target.value
-  shapes[selectedShapeIndex].scale[axis] = value
-  render()
-}
-
-const updateRotation = (event, axis) => {
-  shapes[selectedShapeIndex].rotation[axis] = event.target.value
-  render();
-}
-
-const updateFieldOfView = (event) => {
-  fieldOfViewRadians = m4.degToRad(event.target.value);
-  render();
-}
-
-const updateColor = (event) => {
-  const value = event.target.value
-  shapes[selectedShapeIndex].color = webglUtils.hexToRgb(value)
-}
-
-const deleteShape = (shapeIndex) => {
-  shapes.splice(shapeIndex, 1)
-  render()
-}
-
-const selectShape = (selectedIndex) => {
-  selectedShapeIndex = selectedIndex
-  document.getElementById("tx").value = shapes[selectedIndex].translation.x
-  document.getElementById("ty").value = shapes[selectedIndex].translation.y
-  document.getElementById("tz").value = shapes[selectedIndex].translation.z
-  document.getElementById("sx").value = shapes[selectedIndex].scale.x
-  document.getElementById("sy").value = shapes[selectedIndex].scale.y
-  document.getElementById("sz").value = shapes[selectedIndex].scale.z
-  document.getElementById("rx").value = shapes[selectedIndex].rotation.x
-  document.getElementById("ry").value = shapes[selectedIndex].rotation.y
-  document.getElementById("rz").value = shapes[selectedIndex].rotation.z
-  document.getElementById("fv").value = m4.radToDeg(fieldOfViewRadians)
-  const hexColor = webglUtils.rgbToHex(shapes[selectedIndex].color)
-  document.getElementById("color").value = hexColor
-}
