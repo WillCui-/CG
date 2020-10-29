@@ -84,6 +84,10 @@ const webglUtils = {
     target[index] = event.target.value
     render();
   },
+  updateLightDirection: (event, index) => {
+    lightSource[index] = parseFloat(event.target.value)
+    render()
+  },
   addShape: (newShape, type) => {
     const colorHex = document.getElementById("color").value
     const colorRgb = webglUtils.hexToRgb(colorHex)
