@@ -1,6 +1,6 @@
 let squareRotation = 0.0;
 
-const drawScene = (gl, parameters, buffers, deltaTime) => {
+const drawScene = (gl, parameters, buffers, deltaTime, texture) => {
     clearScene(gl);
     const projectionMatrix = createProjectionMatrix(gl);
     const modelViewMatrix = glMatrix.mat4.create();
@@ -25,7 +25,14 @@ const drawScene = (gl, parameters, buffers, deltaTime) => {
     squareRotation += deltaTime;
 
     configurePositionBufferRead(gl, buffers, parameters);
-    configureColorBufferRead(gl, buffers, parameters);
+    configureTextureBufferRead(gl, buffers, parameters);
+    
+    // Tell WebGL we want to affect texture unit 0
+    gl.activeTexture(gl.TEXTURE0);
+    // Bind the texture to texture unit 0
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    // Tell the shader we bound the texture to texture unit 0
+    gl.uniform1i(parameters.uniformLocations.uSampler, 0);
     
     gl.useProgram(parameters.program);
     setUniforms(gl, parameters, projectionMatrix, modelViewMatrix);
@@ -71,6 +78,17 @@ const configureColorBufferRead = (gl, buffers, parameters) =>   {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
     gl.vertexAttribPointer(parameters.attribLocations.vertexColor, numComponents, type, normalize, stride, offset);
     gl.enableVertexAttribArray(parameters.attribLocations.vertexColor);
+}
+
+const configureTextureBufferRead = (gl, buffers, parameters) => {
+    const num = 2;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
+    gl.vertexAttribPointer(parameters.attribLocations.textureCoord, num, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(parameters.attribLocations.textureCoord);
 }
 
 const setUniforms = (gl, parameters, projectionMatrix, modelViewMatrix) => {
