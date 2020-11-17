@@ -1,4 +1,6 @@
-const drawScene = (gl, parameters, buffers) => {
+let squareRotation = 0.0;
+
+const drawScene = (gl, parameters, buffers, deltaTime) => {
     clearScene(gl);
     const projectionMatrix = createProjectionMatrix(gl);
     const modelViewMatrix = glMatrix.mat4.create();
@@ -7,6 +9,14 @@ const drawScene = (gl, parameters, buffers) => {
         modelViewMatrix,
         modelViewMatrix,
         [-0.0, 0.0, -6.0]);
+
+    glMatrix.mat4.rotate(
+        modelViewMatrix,
+        modelViewMatrix,
+        squareRotation,
+        [0, 0, 1]);
+
+    squareRotation += deltaTime;
 
     configurePositionBufferRead(gl, buffers, parameters);
     configureColorBufferRead(gl, buffers, parameters);
@@ -52,7 +62,7 @@ const configureColorBufferRead = (gl, buffers, parameters) =>   {
     const normalize = false;
     const stride = 0;
     const offset = 0;
-    
+
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
     gl.vertexAttribPointer(parameters.attribLocations.vertexColor, numComponents, type, normalize, stride, offset);
     gl.enableVertexAttribArray(parameters.attribLocations.vertexColor);
